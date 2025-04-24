@@ -7,7 +7,7 @@ const apiUrl = 'https://api.anthropic.com/v1/messages';
 
 export default async function generateIDFData(title: any) {
   const prompt =  `Generate a sample data with JSON object with: 
-        {date, 
+        {date("yyyy-mm-dd"), 
         title, 
         inventors (array){Name, id, nationality, inventorship, employer, address, Phone, email}, 
         abstract(TO BE COMPLETED AFTER FILLING IN THE FORM. Include the need and the proposed solution to said  need as 5~10 lines), 

@@ -4,6 +4,8 @@ import React, { useState, ChangeEvent } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import generateIDFData from '../components/generateIDFDate';
+import generateusingperplexity from '../components/generateusingPerplexity'
+import ReactMarkdown from "react-markdown";
 
 interface Inventor {
   Name: string;
@@ -95,34 +97,16 @@ function isTableSectionKey(
 ): key is 'prior_art' | 'disclosure' | 'plans' {
   return key === 'prior_art' || key === 'disclosure' || key === 'plans';
 }
-
+interface IDFData {
+  invention: Invention;
+}
 
 function App() {
   const [title, setTitle] = useState<string>('');
   const [idfData, setIdfData] = useState<IDFData>(defaultIDFData);
   const [loading, setLoading] = useState<boolean>(false);
+  const [updatingField, setUpdatingField] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<Record<string, boolean>>({});
-
-  const toggleEdit = (fieldPath: string) => {
-    setEditFields((prev) => ({
-      ...prev,
-      [fieldPath]: !prev[fieldPath]
-    }));
-  };
-
-  const handleChange = (fieldPath: string, value: string) => {
-    if (!idfData) return;
-    const path = fieldPath.split('.');
-    const updated = { ...idfData };
-    let pointer: any = updated;
-
-    for (let i = 0; i < path.length - 1; i++) {
-      pointer = pointer[path[i]];
-    }
-
-    pointer[path[path.length - 1]] = value;
-    setIdfData(updated);
-  };
 
   const handleGenerate = async () => {
     if (!title) return;
@@ -136,6 +120,78 @@ function App() {
     }
     setLoading(false);
   };
+
+  const handleUpdateOne = async (item: keyof IDFData | keyof Invention) => {
+    setUpdatingField(item);
+  
+    const inventionKeys: (keyof Invention)[] = [
+      'description',
+      'keywords',
+      'background',
+      'problem',
+      'components',
+      'advantages',
+      'additionaldata',
+      'results',
+    ];
+  
+    const topLevelKeys: (keyof IDFData)[] = [
+      'title',
+      'abstract',
+      'date',
+      'prior_art',
+      'disclosure',
+      'plans',
+    ];
+  
+    let current = '';
+  
+    if (inventionKeys.includes(item as keyof Invention)) {
+      const key = item as keyof Invention;
+      const value = idfData.invention[key];
+      current = Array.isArray(value) ? value.join(', ') : value ?? '';
+    } else if (topLevelKeys.includes(item as keyof IDFData)) {
+      const key = item as keyof IDFData;
+      const value = idfData[key];
+  
+      current =
+        Array.isArray(value) || typeof value === 'object'
+          ? JSON.stringify(value)
+          : (value as string) ?? '';
+    }
+  
+    try {
+      const updated = await generateusingperplexity(idfData.title, item, current);
+  
+      if (inventionKeys.includes(item as keyof Invention)) {
+        const key = item as keyof Invention;
+        setIdfData((prev) => ({
+          ...prev,
+          invention: {
+            ...prev.invention,
+            [key]: ['keywords', 'results', 'components'].includes(key)
+              ? updated.split(',').map((v: string) => v.trim())
+              : updated,
+          },
+        }));
+      } else if (topLevelKeys.includes(item as keyof IDFData)) {
+        const key = item as keyof IDFData;
+        console.log('prior_art: ', key, updated)
+        setIdfData((prev) => ({
+          ...prev,
+          [key]: ['prior_art', 'disclosure', 'plans'].includes(key)
+            ? JSON.parse(updated)
+            : updated,
+        }));
+      }
+    } catch (err) {
+      console.error('Error updating field:', err);
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+  
+  
 
   const handleDownload = () => {
     if (!idfData) return;
@@ -299,137 +355,110 @@ function App() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-blue-700">Invention Disclosure Form</h1>
+    <div className="max-w-6xl mx-auto p-8 font-sans bg-gray-50 min-h-screen">
+      <header className="mb-10">
+        <h1 className="text-4xl font-extrabold text-blue-700 text-center">Invention Disclosure Form</h1>
+        <p className="text-center text-gray-600 mt-2 text-sm">
+          Please complete the form with accurate and detailed information.
+        </p>
+      </header>
   
-      <div className="flex gap-4 mb-6">
-        <input
-          className="flex-1 px-4 py-2 border rounded shadow-sm"
-          placeholder="Input description of Invention"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <button
-          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-          onClick={handleGenerate}
-        >
-          {loading ? 'Generating...' : 'Generate'}
-        </button>
-      </div>
+      <section className="bg-white rounded-xl shadow-lg p-6 space-y-8">
+        {/* Title + Generate Button */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <input
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Input description of Invention"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <button
+            className="bg-gray-300 hover:bg-gray-200 text-gray-800 px-6 py-3 rounded-md shadow transition"
+            onClick={handleGenerate}
+          >
+            {loading ? 'Generating...' : 'Generate'}
+          </button>
+        </div>
+  
+        {idfData && (
+          <div className="space-y-6 text-sm">
+            {/* Header Banner */}
+            <div className="rounded overflow-hidden shadow">
+              <div className="bg-teal-700 text-gray-800 text-center text-xs py-1 font-medium">
+                "Hospital Name" Medical Research, Infrastructure & Services Ltd.
+              </div>
+              <div className="bg-teal-800 text-gray-800 text-center text-lg font-semibold py-2 tracking-wide">
+                INVENTION DISCLOSURE FORM (IDF)
+              </div>
+              <div className="bg-yellow-300 p-4 text-gray-900 border-t border-white">
+                <strong>INSTRUCTIONS:</strong> Complete this form <strong>in full, dated</strong> and <strong>signed</strong>. Email to IP Manager at:{" "}
+                <a href="mailto:amitgill@gmail.com" className="text-blue-800 underline">amitgill@gmail.com</a>
+              </div>
+            </div>
+            {loading ? (
+              <div className="flex items-center justify-center min-h-[200px]">
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                  <p className="text-gray-700 text-sm animate-pulse">Loading, please wait...</p>
+                </div>
+              </div>
+            ) : null}
 
-      {idfData && (
-        <div className="space-y-4 text-sm bg-white p-4 border rounded">
-          {/* Styled Header Banner */}
-          <div className="mb-6">
-            <div className="bg-teal-700 text-white text-center text-sm py-1 font-medium">
-              "Hospital Name" Medical Research, Infrastructure & Services Ltd.
+            {/* 1. Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">1. DATE</label>
+              <input
+                type="date"
+                className="w-full px-4 py-2 no-border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={idfData.date}
+                onChange={(e) => setIdfData({ ...idfData, date: e.target.value })}
+              />
             </div>
-            <div className="bg-teal-800 text-white text-center text-lg font-semibold py-2 border-t border-white tracking-wide">
-              INVENTION DISCLOSURE FORM (IDF)
+  
+            {/* 2. Title */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">2. TITLE</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="flex-1 px-4 py-2 no-border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  placeholder="Please input title"
+                  value={idfData.title}
+                  onChange={(e) => setIdfData({ ...idfData, title: e.target.value })}
+                />
+                <button
+                  className="bg-gray-300 hover:bg-gray-200 text-gray-800 text-sm px-4 py-2 rounded-md shadow"
+                  onClick={() => handleUpdateOne('title')}
+                  disabled={updatingField != null}
+                >
+                  {updatingField === 'title' ? 'Generating...' : 'AI assist'}
+                </button>
+              </div>
             </div>
-
-            <div className="border mt-2 p-3 text-sm bg-yellow-300">
-              <span className="font-bold">INSTRUCTIONS:</span>{' '}
-              This form should be completed <strong>in full, dated</strong> and <strong>signed</strong>. Once completed, please send the form, in Word format, to the IP Manager at THM LTD at:{' '}
-              <a href="mailto:amitgill@gmail.com" className="text-blue-800 underline">amitgill@gmail.com</a>
-            </div>
-          </div>
-          {loading ? (<div className="flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="loader-ring mb-4"></div>
-                  </div>
-                </div>):<></>}
-          {/* 1. Date & 2. Title */}
-          <div>
-            <strong>1. DATE:</strong>
-            <input
-              type="text"
-              className="ml-2 border-none px-2 py-1"
-              value={idfData.date}
-              placeholder='Please input date'
-              onChange={(e) => setIdfData({ ...idfData, date: e.target.value })}
-            />
-          </div>
-          <div>
-            <strong>2. TITLE:</strong>
-            <input
-              type="text"
-              className="ml-2 border-none px-2 py-1 w-full"
-              value={idfData.title}
-              placeholder='Please input title'
-              onChange={(e) => setIdfData({ ...idfData, title: e.target.value })}
-            />
-          </div>
+  
   
           {/* 3. Inventor Table */}
           <div>
-            <strong>3. INVENTOR DETAILS:</strong>
-            <table className="table-auto w-full mt-2 border text-sm">
-              <thead>
-                <tr className="bg-gray-100 text-left">
-                  <th className="border px-2 py-1">Personal Info (Name, ID, Nationality)</th>
-                  <th className="border px-2 py-1">Employer</th>
-                  <th className="border px-2 py-1">% Inventorship</th>
-                  <th className="border px-2 py-1">Contact Info (Home, Phone, Email)</th>
-                  <th className="border px-2 py-1">Signature</th>
+            <strong className="block text-lg font-semibold text-gray-800 mb-2">3. INVENTOR DETAILS:</strong>
+            <table className="table-auto w-full border border-gray-300 text-sm rounded-md shadow-sm">
+              <thead className="bg-gray-100 text-left">
+                <tr>
+                  <th className="border px-3 py-2">Personal Info (Name, ID, Nationality)</th>
+                  <th className="border px-3 py-2">Employer</th>
+                  <th className="border px-3 py-2">% Inventorship</th>
+                  <th className="border px-3 py-2">Contact Info (Home, Phone, Email)</th>
+                  <th className="border px-3 py-2">Signature</th>
                 </tr>
               </thead>
               <tbody>
                 {idfData.inventors.map((inv, idx) => (
-                  <tr key={idx}>
-                    {/* Personal Info */}
+                  <tr key={idx} className="even:bg-gray-50">
                     <td className="border px-0 py-0">
-                    {(['Name', 'id', 'nationality'] as (keyof Inventor)[]).map((field, i) => (
-                        <div key={i} className="border-b last:border-b-0 px-2 py-1">
+                      {(['Name', 'id', 'nationality'] as (keyof Inventor)[]).map((field, i) => (
+                        <div key={i} className="border-b last:border-b-0 px-3 py-1">
                           <input
                             placeholder={`Please input ${field}`}
-                            className="w-full border border-transparent hover:border-gray-300 focus:border-blue-500 px-1 py-0.5 focus:outline-none"
-                            value={inv[field] ?? ''}
-                            onChange={(e) => {
-                              const updated = [...idfData.inventors];
-                              updated[idx][field] = e.target.value;
-                              setIdfData({ ...idfData, inventors: updated });
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </td>
-  
-                    {/* Employer */}
-                    <td className="border px-2 py-1">
-                      <input
-                        className="w-full border border-transparent hover:border-gray-300 focus:border-blue-500 px-1 py-0.5 focus:outline-none"
-                        value={inv.employer}
-                        placeholder='Please input Employer'
-                        onChange={(e) => {
-                          const updated = [...idfData.inventors];
-                          updated[idx].employer = e.target.value;
-                          setIdfData({ ...idfData, inventors: updated });
-                        }}
-                      />
-                    </td>
-  
-                    {/* % Inventorship */}
-                    <td className="border px-2 py-1">
-                      <input
-                        className="w-full border border-transparent hover:border-gray-300 focus:border-blue-500 px-1 py-0.5 focus:outline-none"
-                        value={inv.inventorship}
-                        placeholder='Please input % of inventorship'
-                        onChange={(e) => {
-                          const updated = [...idfData.inventors];
-                          updated[idx]['inventorship'] = e.target.value;
-                          setIdfData({ ...idfData, inventors: updated });
-                        }}
-                      />
-                    </td>
-  
-                    {/* Contact Info */}
-                    <td className="border px-0 py-0">
-                      {(['address', 'Phone', 'email'] as (keyof Inventor)[]).map((field, i) => (
-                        <div key={i} className="border-b last:border-b-0 px-2 py-1">
-                          <input
-                            placeholder={field === 'address' ? 'Please input Home Address' : `Please input ${field}`}
-                            className="w-full border border-transparent hover:border-gray-300 focus:border-blue-500 px-1 py-0.5 focus:outline-none"
+                            className="w-full px-2 py-1 no-border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
                             value={inv[field] || ''}
                             onChange={(e) => {
                               const updated = [...idfData.inventors];
@@ -440,9 +469,47 @@ function App() {
                         </div>
                       ))}
                     </td>
-  
-                    {/* Signature */}
-                    <td className="border px-2 py-1">{/* Blank for signature */}</td>
+                    <td className="border px-3 py-2">
+                      <input
+                        className="w-full px-2 py-1 no-border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        value={inv.employer}
+                        placeholder='Please input Employer'
+                        onChange={(e) => {
+                          const updated = [...idfData.inventors];
+                          updated[idx].employer = e.target.value;
+                          setIdfData({ ...idfData, inventors: updated });
+                        }}
+                      />
+                    </td>
+                    <td className="border px-3 py-2">
+                      <input
+                        className="w-full px-2 py-1 no-border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        value={inv.inventorship}
+                        placeholder='Please input % of inventorship'
+                        onChange={(e) => {
+                          const updated = [...idfData.inventors];
+                          updated[idx]['inventorship'] = e.target.value;
+                          setIdfData({ ...idfData, inventors: updated });
+                        }}
+                      />
+                    </td>
+                    <td className="border px-0 py-0">
+                      {(['address', 'Phone', 'email'] as (keyof Inventor)[]).map((field, i) => (
+                        <div key={i} className="border-b last:border-b-0 px-3 py-1">
+                          <input
+                            placeholder={field === 'address' ? 'Please input Home Address' : `Please input ${field}`}
+                            className="w-full px-2 py-1 no-border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            value={inv[field] || ''}
+                            onChange={(e) => {
+                              const updated = [...idfData.inventors];
+                              updated[idx][field] = e.target.value;
+                              setIdfData({ ...idfData, inventors: updated });
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </td>
+                    <td className="border px-3 py-2 text-center text-gray-400 italic">Signed</td>
                   </tr>
                 ))}
               </tbody>
@@ -461,34 +528,47 @@ function App() {
                       employer: '',
                       address: '',
                       phone: '',
-                      email: ''
-                    }
-                  ]
+                      email: '',
+                    },
+                  ],
                 })
               }
-              className="mt-2 text-blue-600 hover:underline"
+              className="mt-2 text-blue-600 hover:underline text-sm"
             >
               + Add Inventor
             </button>
           </div>
   
-          {/* 4. Abstract */}
+          {/* 4. ABSTRACT OF THE INVENTION */}
           <div>
-            <strong>4. ABSTRACT OF THE INVENTION:</strong>
+            <strong className="block text-lg font-semibold text-gray-800 mb-2">4. ABSTRACT OF THE INVENTION:</strong>
             <div
-              className="w-full mt-1 border-none px-2 py-1 min-h-[20px]"
+              className="w-full min-h-[60px] px-3 py-2 no-border rounded-md bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               contentEditable
-              data-placeholder="TO BE COMPLETED AFTER FILLING IN THE FORM. Include the need and the proposed solution to said  need"
+              data-placeholder="TO BE COMPLETED AFTER FILLING IN THE FORM. Include the need and the proposed solution to said need"
               suppressContentEditableWarning
               onBlur={(e) => setIdfData({ ...idfData, abstract: e.target.innerText })}
             >
               {idfData.abstract}
             </div>
+            <button
+              className="mt-2 text-sm px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-200 flex items-center gap-2"
+              onClick={() => handleUpdateOne('abstract')}
+              disabled={updatingField === 'abstract'}
+            >
+              {updatingField === 'abstract' ? (
+                <svg className="animate-spin h-4 w-4 text-gray-800" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : 'AI assist'}
+            </button>
           </div>
+
   
-          {/* 5. The Invention */}
+          {/* 5. THE INVENTION */}
           <div>
-            <strong>5. THE INVENTION</strong>
+            <strong className="block text-lg font-semibold text-gray-800 mb-2">5. THE INVENTION</strong>
 
             {(
               [
@@ -502,10 +582,10 @@ function App() {
                 'results',
               ] as (keyof Invention)[]
             ).map((key) => (
-              <div key={key}>
-                <strong>{key.toUpperCase()}:</strong>
+              <div key={key} className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">{key.toUpperCase()}:</label>
                 <div
-                  className="w-full mt-1 border-none px-2 py-1 min-h-[20px]"
+                  className="w-full min-h-[60px] px-3 py-2 no-border rounded-md bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   contentEditable
                   data-placeholder={placeholdertext[key]}
                   suppressContentEditableWarning
@@ -515,14 +595,12 @@ function App() {
 
                     const updated = { ...idfData };
 
-                    // Convert specific fields to arrays
                     const fieldsToArray = ['keywords', 'results', 'components'] as (keyof Invention)[];
-
                     if (fieldsToArray.includes(key)) {
                       (updated.invention[key] as string[]) = val.split(',').map((v) => v.trim());
                     } else {
                       (updated.invention[key] as string) = val;
-                    }                    
+                    }
 
                     setIdfData(updated);
                   }}
@@ -531,30 +609,43 @@ function App() {
                     ? (idfData.invention[key] as string[]).join(', ')
                     : (idfData.invention[key] as string)}
                 </div>
+                <button
+                  className="mt-2 text-sm px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-200 flex items-center gap-2"
+                  onClick={() => handleUpdateOne(key)}
+                  disabled={updatingField != null}
+                >
+                  {updatingField === key ? (
+                    <svg className="animate-spin h-4 w-4 text-gray-800" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : 'AI assist'}
+                </button>
               </div>
             ))}
           </div>
 
+
   
-          {idfData && (
+            {idfData && (
             <div>
-              <strong>6. PRIOR ART</strong>
-              <table className="table-auto w-full mt-2 border text-sm">
-                <thead>
-                  <tr className="bg-gray-100">
+              <strong className="block text-lg font-semibold text-gray-800 mb-2">6. PRIOR ART</strong>
+              <table className="table-auto w-full border border-gray-300 text-sm shadow-sm rounded-md mt-2">
+                <thead className="bg-gray-100 text-left text-gray-700">
+                  <tr>
                     {(['title', 'authors', 'published', 'PublicationDate'] as (keyof PriorArtItem)[]).map((h) => (
-                      <th key={h} className="border px-2 py-1">{h}</th>
+                      <th key={h} className="border px-3 py-2 capitalize">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {idfData.prior_art.map((item, idx) => (
-                    <tr key={idx}>
+                    <tr key={idx} className="even:bg-gray-50">
                       {(['title', 'authors', 'published', 'PublicationDate'] as (keyof PriorArtItem)[]).map((h) => (
-                        <td key={h} className="border px-2 py-1">
+                        <td key={h} className="border px-3 py-2">
                           <input
-                            className="w-full"
-                            value={item[h] ?? ''}
+                            className="w-full px-2 py-1 no-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={item[h] || ''}
                             placeholder={`Please input ${h}`}
                             onChange={(e) => {
                               const updated = [...idfData.prior_art];
@@ -568,39 +659,55 @@ function App() {
                   ))}
                 </tbody>
               </table>
-              <button
-                className="mt-2 text-blue-600 hover:underline"
-                onClick={() => {
-                  const empty = { title: '', authors: '', published: '', PublicationDate: '' };
-                  setIdfData({ ...idfData, prior_art: [...idfData.prior_art, empty] });
-                }}
-              >
-                + Add Row
-              </button>
+
+              <div className="flex items-center gap-4 mt-2">
+                <button
+                  className="text-blue-600 hover:underline text-sm"
+                  onClick={() => {
+                    const empty = { title: '', authors: '', published: '', PublicationDate: '' };
+                    setIdfData({ ...idfData, prior_art: [...idfData.prior_art, empty] });
+                  }}
+                >
+                  + Add Row
+                </button>
+                <button
+                  className="text-sm px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-200 flex items-center gap-2"
+                  onClick={() => handleUpdateOne('prior_art')}
+                  disabled={updatingField === 'prior_art'}
+                >
+                  {updatingField === 'prior_art' ? (
+                    <svg className="animate-spin h-4 w-4 text-gray-800" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : 'AI assist'}
+                </button>
+              </div>
             </div>
           )}
 
 
+
           {idfData && (
             <div>
-              <strong>7. DISCLOSURE</strong>
-              <table className="table-auto w-full mt-2 border text-sm">
-                <thead>
-                  <tr className="bg-gray-100">
+              <strong className="block text-lg font-semibold text-gray-800 mb-2">7. DISCLOSURE</strong>
+              <table className="table-auto w-full border border-gray-300 text-sm shadow-sm rounded-md mt-2">
+                <thead className="bg-gray-100 text-left text-gray-700">
+                  <tr>
                     {(['title', 'authors', 'published', 'Date'] as (keyof DisclosureItem)[]).map((h) => (
-                      <th key={h} className="border px-2 py-1">{h}</th>
+                      <th key={h} className="border px-3 py-2 capitalize">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {idfData.disclosure.map((item, idx) => (
-                    <tr key={idx}>
+                    <tr key={idx} className="even:bg-gray-50">
                       {(['title', 'authors', 'published', 'Date'] as (keyof DisclosureItem)[]).map((h) => (
-                        <td key={h} className="border px-2 py-1">
+                        <td key={h} className="border px-3 py-2">
                           <input
-                            className="w-full"
+                            className=" w-full px-2 py-1 no-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder={`Please input ${h}`}
-                            value={item[h] ?? ''}
+                            value={item[h] || ''}
                             onChange={(e) => {
                               const updated = [...idfData.disclosure];
                               updated[idx][h] = e.target.value;
@@ -613,38 +720,54 @@ function App() {
                   ))}
                 </tbody>
               </table>
-              <button
-                className="mt-2 text-blue-600 hover:underline"
-                onClick={() => {
-                  const empty = { title: '', authors: '', published: '', Date: '' };
-                  setIdfData({ ...idfData, disclosure: [...idfData.disclosure, empty] });
-                }}
-              >
-                + Add Row
-              </button>
+
+              <div className="flex items-center gap-4 mt-2">
+                <button
+                  className="text-blue-600 hover:underline text-sm"
+                  onClick={() => {
+                    const empty = { title: '', authors: '', published: '', Date: '' };
+                    setIdfData({ ...idfData, disclosure: [...idfData.disclosure, empty] });
+                  }}
+                >
+                  + Add Row
+                </button>
+                <button
+                  className="text-sm px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-200 flex items-center gap-2"
+                  onClick={() => handleUpdateOne('disclosure')}
+                  disabled={updatingField === 'disclosure'}
+                >
+                  {updatingField === 'disclosure' ? (
+                    <svg className="animate-spin h-4 w-4 text-gray-800" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : 'AI assist'}
+                </button>
+              </div>
             </div>
           )}
 
+
           {idfData && (
             <div>
-              <strong>8. PUBLICATION PLANS</strong>
-              <table className="table-auto w-full mt-2 border text-sm">
-                <thead>
-                  <tr className="bg-gray-100">
+              <strong className="block text-lg font-semibold text-gray-800 mb-2">8. PUBLICATION PLANS</strong>
+              <table className="table-auto w-full border border-gray-300 text-sm shadow-sm rounded-md mt-2">
+                <thead className="bg-gray-100 text-left text-gray-700">
+                  <tr>
                     {(['title', 'authors', 'disclosed', 'Date'] as (keyof PublicationPlan)[]).map((h) => (
-                      <th key={h} className="border px-2 py-1">{h}</th>
+                      <th key={h} className="border px-3 py-2 capitalize">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {idfData.plans.map((item, idx) => (
-                    <tr key={idx}>
+                    <tr key={idx} className="even:bg-gray-50">
                       {(['title', 'authors', 'disclosed', 'Date'] as (keyof PublicationPlan)[]).map((h) => (
-                        <td key={h} className="border px-2 py-1">
+                        <td key={h} className="border px-3 py-2">
                           <input
-                            className="w-full"
+                            className="w-full px-2 py-1 no-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder={`Please input ${h}`}
-                            value={item[h] ?? ''}
+                            value={item[h] || ''}
                             onChange={(e) => {
                               const updated = [...idfData.plans];
                               updated[idx][h] = e.target.value;
@@ -657,33 +780,49 @@ function App() {
                   ))}
                 </tbody>
               </table>
-              <button
-                className="mt-2 text-blue-600 hover:underline"
-                onClick={() => {
-                  const empty = { title: '', authors: '', disclosed: '', Date: '' };
-                  setIdfData({ ...idfData, plans: [...idfData.plans, empty] });
-                }}
-              >
-                + Add Row
-              </button>
+
+              <div className="flex items-center gap-4 mt-2">
+                <button
+                  className="text-blue-600 hover:underline text-sm"
+                  onClick={() => {
+                    const empty = { title: '', authors: '', disclosed: '', Date: '' };
+                    setIdfData({ ...idfData, plans: [...idfData.plans, empty] });
+                  }}
+                >
+                  + Add Row
+                </button>
+                <button
+                  className="text-sm px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-200 flex items-center gap-2"
+                  onClick={() => handleUpdateOne('plans')}
+                  disabled={updatingField === 'plans'}
+                >
+                  {updatingField === 'plans' ? (
+                    <svg className="animate-spin h-4 w-4 text-gray-800" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : 'AI assist'}
+                </button>
+              </div>
             </div>
           )}
 
+
   
-          {/* Download PDF */}
-          <button
-            className="mt-6 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-            onClick={handleDownload}
-          >
-            Download PDF
-          </button>
-        </div>
-      )}
+            {/* Download Button */}
+            <div className="text-center">
+              <button
+                className="mt-6 bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 shadow text-lg"
+                onClick={handleDownload}
+              >
+                Download PDF
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
-  
-  
-  
 }
 
 export default App;
