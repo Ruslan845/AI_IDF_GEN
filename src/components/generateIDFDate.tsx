@@ -9,7 +9,7 @@ export default async function generateIDFData(title: any) {
   const prompt =  `Generate a sample data with JSON object with: 
         {date("yyyy-mm-dd"), 
         title, 
-        inventors (array){Name, id, nationality, inventorship, employer, address, Phone, email}, 
+        inventors (array){Name, id, nationality, inventorship(give me number of percents), employer, address, Phone, email}, 
         abstract(TO BE COMPLETED AFTER FILLING IN THE FORM. Include the need and the proposed solution to said  need as 5~10 lines), 
         invention {
           description (Describe the invention in detail including all essential elements. If you have a draft of a scientific article, a presentation, a grant proposal etc. related to the invention please also send by e-mail, in a separate file),
