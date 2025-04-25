@@ -200,179 +200,169 @@ function App() {
     if (!idfData) return;
   
     const doc = new jsPDF();
-    const pageHeight = doc.internal.pageSize.height;
-    let y = 10;
-    let firstPage = true;
-  
-    const marginX = 10;
-    const maxWidth = 180;
+    const margin = 10;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const lineHeight = 6;
-    const bottomMargin = 20;
+    let y = margin;
   
-    // Header for first page
-    const drawHeader = () => {
-      doc.setFillColor(59, 130, 246); // bg-blue-500
-      doc.rect(0, 0, 210, 10, 'F');
-      doc.setFontSize(8);
-      doc.setTextColor(31, 41, 55); // text-gray-800
-      doc.setFont('helvetica', 'bold');
-      doc.text('"Hospital Name" Medical Research, Infrastructure & Services Ltd.', 105, 7, { align: 'center' });
-  
-      doc.setFillColor(96, 165, 250); // bg-blue-400
-      doc.rect(0, 10, 210, 12, 'F');
-      doc.setFontSize(14);
-      doc.setTextColor(31, 41, 55); // text-gray-800
-      doc.setFont('helvetica', 'bold');
-      doc.text('INVENTION DISCLOSURE FORM (IDF)', 105, 18, { align: 'center' });
-  
-      y = 30; // enough spacing to avoid overlap
-    };
-  
-    const addLine = (label: string, text: string) => {
-      if (y + lineHeight > pageHeight - bottomMargin) {
-        doc.addPage();
-        y = 10;
-        firstPage = false;
-      }
-  
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text(label, marginX, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
-      doc.text(text || '', marginX + 40, y);
-      y += lineHeight + 2;
-    };
-  
-    const addMultiline = (label: string, text: string) => {
-      const lines = doc.splitTextToSize(text || '', maxWidth);
+    const addMultiline = (label: string, text: string = '') => {
+      const maxWidth = pageWidth - margin * 2;
+      const lines = doc.splitTextToSize(text, maxWidth);
       const totalHeight = lines.length * lineHeight;
   
-      if (y + totalHeight > pageHeight - bottomMargin) {
+      if (y + lineHeight > pageHeight - margin) {
         doc.addPage();
-        y = 10;
-        firstPage = false;
+        y = margin;
       }
   
       doc.setFont('helvetica', 'bold');
-      doc.text(label, marginX, y);
+      doc.text(label, margin, y);
       y += lineHeight;
+  
       doc.setFont('helvetica', 'normal');
-      lines.forEach((line: any) => {
-        doc.text(line, marginX, y);
+      lines.forEach((line : any) => {
+        if (y + lineHeight > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.text(line, margin, y);
         y += lineHeight;
       });
-      y += 4;
+  
+      y += 2;
     };
   
-    drawHeader();
+    const addTable = (title: string, head: string[][], body: string[][]) => {
+      if (y + 10 > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
   
-    addLine('1. DATE:', idfData.date);
-    addLine('2. TITLE:', idfData.title);
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, margin, y);
+      y += 4;
   
-    // 3. INVENTOR DETAILS
-    doc.setFont('helvetica', 'bold');
-    doc.text('3. INVENTOR DETAILS:', marginX, y);
-    y += 4;
-  
-    const inventorBody = idfData.inventors.map(inv => [
-      `${inv.Name || ''}\n${inv.id || ''}\n${inv.nationality || ''}`,
-      inv.employer || '',
-      `${inv.inventorship || 0}%`,
-      `${inv.address || ''}\n${inv.Phone || ''}\n${inv.email || ''}`,
-      ''
-    ]);
-    console.log(idfData.inventors);
-  
-    if (inventorBody.length) {
       autoTable(doc, {
         startY: y,
-        head: [[
-          'Personal Info (Name, ID, Nationality)',
-          'Employer',
-          '% Inventorship',
-          'Contact Info (Home, Phone, Email)',
-          'Signature'
-        ]],
-        body: inventorBody,
+        head,
+        body,
+        margin: { left: margin, right: margin },
         styles: { fontSize: 10, cellPadding: 2 },
         theme: 'grid',
-        didDrawPage: (data : any) => {
-          if (firstPage) firstPage = false;
-          y = data.cursor.y + 10;
+        didDrawPage: () => {
+          y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 10 : y;
         },
       });
-    }
   
+      if (doc.lastAutoTable?.finalY) {
+        y = doc.lastAutoTable.finalY + 10;
+      }
+    };
+  
+    // Top Banners
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(60, 60, 60);
+    doc.setFillColor(173, 216, 230);
+    doc.rect(0, 0, pageWidth, 8, 'F');
+    doc.text('"Hospital Name" Medical Research, Infrastructure & Services Ltd.', pageWidth / 2, 5, { align: 'center' });
+  
+    doc.setFillColor(100, 149, 237);
+    doc.rect(0, 8, pageWidth, 12, 'F');
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text('INVENTION DISCLOSURE FORM (IDF)', pageWidth / 2, 16, { align: 'center' });
+  
+    y = 24;
+  
+    // Section 1 & 2
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`1. DATE:`, margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(idfData.date || '', margin + 30, y);
+    y += lineHeight;
+  
+    doc.setFont('helvetica', 'bold');
+    doc.text(`2. TITLE:`, margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(idfData.title || '', margin + 30, y);
+    y += lineHeight + 2;
+  
+    // Section 3 - Inventors Table
+    const inventorBody = idfData.inventors
+      .filter(inv => inv.Name || inv.id || inv.nationality || inv.employer || inv.inventorship)
+      .map(inv => [
+        `${inv.Name}\n${inv.id}\n${inv.nationality}`,
+        inv.employer,
+        `${inv.inventorship}%`,
+        `${inv.address || ''}\n${inv.Phone || ''}\n${inv.email || ''}`,
+        ''
+      ]);
+  
+    addTable(
+      '3. INVENTOR DETAILS:',
+      [[
+        'Personal Info (Name, ID, Nationality)',
+        'Employer',
+        '% Inventorship',
+        'Contact Info (Home, Phone, Email)',
+        'Signature'
+      ]],
+      inventorBody
+    );
+  
+    // Section 4-5
     addMultiline('4. ABSTRACT OF THE INVENTION:', idfData.abstract);
     addMultiline('5. DESCRIPTION:', idfData.invention.description);
     addMultiline('KEYWORDS:', Array.isArray(idfData.invention.keywords) ? idfData.invention.keywords.join(', ') : '');
     addMultiline('BACKGROUND:', idfData.invention.background);
     addMultiline('PROBLEM:', idfData.invention.problem);
-    addMultiline('COMPONENTS:', (Array.isArray(idfData.invention.components)
+  
+    const componentsList = Array.isArray(idfData.invention.components)
       ? idfData.invention.components
-      : (idfData.invention.components || '').split('\n').map(line => line.trim())
-    ).join('\n'));
+      : (idfData.invention.components || '').split('\n').map(line => line.trim()).filter(Boolean);
+  
+    addMultiline('COMPONENTS:', componentsList.join('\n'));
     addMultiline('ADVANTAGES:', idfData.invention.advantages);
     addMultiline('ADDITIONAL DATA:', idfData.invention.additionaldata);
     addMultiline('RESULTS:', Array.isArray(idfData.invention.results) ? idfData.invention.results.join('\n') : '');
   
-    // 6. PRIOR ART
-    doc.setFont('helvetica', 'bold');
-    doc.text('6. PRIOR ART:', marginX, y);
-    y += 4;
+    // Section 6 - Prior Art
+    const priorArtBody = idfData.prior_art.filter(p => p.title || p.authors || p.published || p.PublicationDate)
+      .map(p => [p.title, p.authors, p.published, p.PublicationDate]);
   
-    const priorArtBody = idfData.prior_art.filter(p => p.title || p.authors || p.published || p.PublicationDate);
     if (priorArtBody.length) {
-      autoTable(doc, {
-        startY: y,
-        head: [['Title', 'Authors', 'Published', 'Publication Date']],
-        body: priorArtBody.map(p => [p.title, p.authors, p.published, p.PublicationDate]),
-        styles: { fontSize: 10 },
-        theme: 'grid',
-      });
-      y = doc.lastAutoTable.finalY + 10;
+      addTable('6. PRIOR ART:', [['Title', 'Authors', 'Published', 'Publication Date']], priorArtBody);
     }
   
-    // 7. DISCLOSURE
-    doc.text('7. DISCLOSURE:', marginX, y);
-    y += 4;
-    const disclosureBody = idfData.disclosure.filter(d => d.title || d.authors || d.published || d.Date);
+    // Section 7 - Disclosure
+    const disclosureBody = idfData.disclosure.filter(d => d.title || d.authors || d.published || d.Date)
+      .map(d => [d.title, d.authors, d.published, d.Date]);
+  
     if (disclosureBody.length) {
-      autoTable(doc, {
-        startY: y,
-        head: [['Title', 'Authors', 'Published', 'Date']],
-        body: disclosureBody.map(d => [d.title, d.authors, d.published, d.Date]),
-        styles: { fontSize: 10 },
-        theme: 'grid'
-      });
-      y = doc.lastAutoTable.finalY + 10;
+      addTable('7. DISCLOSURE:', [['Title', 'Authors', 'Published', 'Date']], disclosureBody);
     }
   
-    // 8. PUBLICATION PLANS
-    doc.text('8. PUBLICATION PLANS:', marginX, y);
-    y += 4;
-    const plansBody = idfData.plans.filter(p => p.title || p.authors || p.disclosed || p.Date);
+    // Section 8 - Plans
+    const plansBody = idfData.plans.filter(p => p.title || p.authors || p.disclosed || p.Date)
+      .map(p => [p.title, p.authors, p.disclosed, p.Date]);
+  
     if (plansBody.length) {
-      autoTable(doc, {
-        startY: y,
-        head: [['Title', 'Authors', 'Disclosed', 'Date']],
-        body: plansBody.map(p => [p.title, p.authors, p.disclosed, p.Date]),
-        styles: { fontSize: 10 },
-        theme: 'grid'
-      });
+      addTable('8. PUBLICATION PLANS:', [['Title', 'Authors', 'Disclosed', 'Date']], plansBody);
     }
   
-    // Footer on last page
-    const finalPageHeight = doc.internal.pageSize.getHeight();
-    doc.setFont('helvetica', 'bold');
+    // Footer (on last page)
+    const lastPage = doc.getNumberOfPages();
+    doc.setPage(lastPage);
     doc.setFontSize(10);
-    doc.setTextColor(0, 0, 128);
-    doc.text('PLEASE FEEL FREE TO CONTACT US FOR QUESTIONS:', 10, finalPageHeight - 20);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(0, 0, 255);
-    doc.text('amitgill@gmail.com', 10, finalPageHeight - 10);
+    doc.setTextColor(100);
+    doc.text("PLEASE FEEL FREE TO CONTACT US FOR QUESTIONS:", margin, pageHeight - 15);
+    doc.text("amitgill@gmail.com", margin, pageHeight - 8);
   
+    // Save
     doc.save(`${idfData.title || 'IDF'}.pdf`);
   };
   
