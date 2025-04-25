@@ -16,7 +16,7 @@ const text = {
     keywords: "(array) (Please provide 5 keywords that describe the main features of the invention only )",
     background: "(Provide details on the field of invention, what is common knowledge in the field and what are the pitfall and unanswered needs)",
     problem: "(Describe in detail the need identified by you for which the invention is a solution) (up to 1 paragraph)",
-    components: "(Give me them as one string and splite by '--') (Describe in detail the elements of the invention that are crucial for its function. The elements could be parts of a device, a molecular formulation, physical characteristics, computational elements, working conditions, structural features such as size, shape, material etc. Make sure to include all the elements.) (up to 1 page)",
+    components: "strectured directory (Describe in detail the elements of the invention that are crucial for its function. The elements could be parts of a device, a molecular formulation, physical characteristics, computational elements, working conditions, structural features such as size, shape, material etc. Make sure to include all the elements.) (up to 1 page)",
     advantages: "(Based on your knowledge and expertise, describe in detail what is new (not previously known) in the solution proposed, why it is important, and what are the benefits compared to existing solutions) (up to 5 paragraphs)",
     additionaldata: "(Provide figures, sketches, pictures, graphs, statistics, lists, sequences etc.) (up to 5 pages)",
     results: "(array) (Where applicable, provide results such as in vitro, in vivo, prototype, simulation, working computer program, statistics, etc.)  (1~3 pages)",
@@ -36,7 +36,7 @@ const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 
 export default async function generateusingperplexity(title: string, type: string, basic: string) {
     console.log(title, type, basic);
-  const prompt = "This is " + type + " about '" + title + " and base data: '" + basic + "' and response must follow this '" + getValueFromObject(text, type) + "' and give me without markdown and give me only answer without any unnessary sentenses like if you response array, you don't have to add some sentenses if it is about prior_art, disclosure, plans, keywords, you only response array and items with style '...':'...' and if it isn't give me also text that show directly and not include [..], charactors like [1]...";
+  const prompt = "This is " + type + " about '" + title + " and base data: '" + basic + "' and response must follow this '" + getValueFromObject(text, type) + "' and give me without markdown and give me only answer without any unnessary sentenses like if you response array, you don't have to add some sentenses if it is about prior_art, disclosure, plans, keywords, you only response array and all array has objects and they objects have to be styled like '...':'...' and if it isn't give me also text that show directly and not include [..], charactors like [1]...";
     console.log("prompt", prompt)
 
   try {
