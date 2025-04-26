@@ -147,6 +147,7 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
         // {
         //   setMessage({title, item, current, result:""})
         // }
+        console.log(updated);
         if (inventionKeys.includes(item as keyof Invention)) {
           const key = item as keyof Invention;
           setIdfData((prev) => ({
@@ -164,7 +165,7 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
           setIdfData((prev) => ({
             ...prev,
             [key]: ['prior_art', 'disclosure', 'plans'].includes(key)
-              ? JSON.parse(updated)
+              ? updated
               : updated,
           }));
         }
@@ -230,7 +231,7 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
   
     try {
       let updated : any;
-      if(title == "prior_art" || title == "disclosure" || title == "plans"){
+      if(item != "prior_art"){
         updated = await generateusingperplexity(title, item, current);
         if (inventionKeys.includes(item as keyof Invention)) {
           const key = item as keyof Invention;
@@ -257,7 +258,7 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
       }
       else
       {
-        setMessage({title, item, current, result:""})
+        setMessage({title, item, current: idfData.invention["keywords"], result:""})
       }
     } catch (err) {
       console.error('Error updating field:', err);
@@ -285,8 +286,9 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
     // Text writer
     const writeText = (text: string, x: number, y: number) => {
       const rtl = isHebrew(text);
+      const formattedText = rtl ? text.split('').reverse().join('') : text;
       doc.setFont('Alef', 'normal');
-      doc.text(text, rtl ? pageWidth - x : x, y, {
+      doc.text(formattedText, rtl ? pageWidth - x : x, y, {
         align: rtl ? 'right' : 'left',
         isInputRtl: rtl,
       });
