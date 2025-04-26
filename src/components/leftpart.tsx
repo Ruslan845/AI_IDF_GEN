@@ -6,16 +6,7 @@ import autoTable from 'jspdf-autotable';
 import generateIDFData from './generateIDFDate';
 import generateusingperplexity from './generateusingPerplexity'
 import '../fonts/Alef-Regular-normal'
-import footerImg from './path-to/your-uploaded-image.png'; // Ensure path is correct
-
-import html2canvas from 'html2canvas-pro';
-import ReactMarkdown from "react-markdown";
-
-const fontUrl = '/fonts/Alef-Regular.ttf';
-const response = await fetch(fontUrl);
-const fontData = await response.arrayBuffer();
-const fontBinary = new Uint8Array(fontData);
-const fontBase64 = btoa(String.fromCharCode(...fontBinary));
+// const fontBase64 = "BASE64_ENCODED_STRING_OF_ALEF_REGULAR_TTF"; 
 
 interface LeftPartProps {
   message: any;
@@ -274,45 +265,46 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
 
   const handleDownload = () => {
     if (!idfData) return;
-  
+
     const doc = new jsPDF();
     const margin = 10;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const lineHeight = 6;
     let y = margin;
-  
-    // Load Hebrew-supported font
-    doc.addFileToVFS('Alef-Regular.ttf', fontBase64)
+
+    // ✅ Embed the font only when downloading
+    // doc.addFileToVFS('Alef-Regular.ttf', fontBase64);
     doc.addFont('Alef-Regular.ttf', 'Alef', 'normal');
-  
+    doc.setFont('Alef', 'normal')
+
     // Helper to detect Hebrew
     const isHebrew = (text: string) => /[\u0590-\u05FF]/.test(text);
-  
+
     // Text writer
     const writeText = (text: string, x: number, y: number) => {
       const rtl = isHebrew(text);
       doc.setFont('Alef', 'normal');
       doc.text(text, rtl ? pageWidth - x : x, y, {
         align: rtl ? 'right' : 'left',
-        isInputRtl: rtl
+        isInputRtl: rtl,
       });
     };
-  
+
     // Multiline block writer
     const addMultiline = (label: string, text: string = '') => {
       const maxWidth = pageWidth - margin * 2;
       const lines = doc.splitTextToSize(text, maxWidth);
       const totalHeight = lines.length * lineHeight;
-  
+
       if (y + totalHeight > pageHeight - margin) {
         doc.addPage();
         y = margin;
       }
-  
+
       writeText(label, margin, y);
       y += lineHeight;
-  
+
       lines.forEach((line: any) => {
         if (y + lineHeight > pageHeight - margin) {
           doc.addPage();
@@ -321,21 +313,21 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
         writeText(line, margin, y);
         y += lineHeight;
       });
-  
+
       y += 2;
     };
-  
+
     // Table Writer
     const addTable = (title: string, head: string[][], body: string[][]) => {
       if (y + 10 > pageHeight - margin) {
         doc.addPage();
         y = margin;
       }
-  
+
       doc.setFont('Alef', 'normal');
       writeText(title, margin, y);
       y += 4;
-  
+
       autoTable(doc, {
         startY: y,
         head,
@@ -343,16 +335,16 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
         margin: { left: margin, right: margin },
         styles: { fontSize: 10, cellPadding: 2, font: 'Alef' },
         theme: 'grid',
-        didDrawPage: () => {
-          y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 10 : y;
+        didDrawPage: (data : any) => {
+          y = data.cursor.y + 10;
         },
       });
-  
+
       if (doc.lastAutoTable?.finalY) {
         y = doc.lastAutoTable.finalY + 10;
       }
     };
-  
+
     // Top Banner
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
@@ -360,88 +352,88 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
     doc.setFillColor(173, 216, 230);
     doc.rect(0, 0, pageWidth, 8, 'F');
     doc.text('"Hospital Name" Medical Research, Infrastructure & Services Ltd.', pageWidth / 2, 5, { align: 'center' });
-  
+
     doc.setFillColor(100, 149, 237);
     doc.rect(0, 8, pageWidth, 12, 'F');
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
     doc.text('INVENTION DISCLOSURE FORM (IDF)', pageWidth / 2, 16, { align: 'center' });
-  
+
     y = 24;
-  
+
     // Sections
     doc.setFontSize(12);
     doc.setFont('Alef', 'normal');
-  
+
     writeText(`1. DATE: ${idfData.date || ''}`, margin, y);
     y += lineHeight;
-  
+
     writeText(`2. TITLE: ${idfData.title || ''}`, margin, y);
     y += lineHeight + 2;
-  
+
     // Inventors Table
-    const inventorBody = idfData.inventors
-      .filter(inv => inv.Name || inv.id || inv.nationality || inv.employer || inv.inventorship)
+    const inventorBody = idfData.inventors?.filter(inv => inv.Name || inv.id || inv.nationality || inv.employer || inv.inventorship)
       .map(inv => [
         `${inv.Name}\n${inv.id}\n${inv.nationality}`,
         inv.employer,
         `${inv.inventorship}%`,
         `${inv.address || ''}\n${inv.Phone || ''}\n${inv.email || ''}`,
         ''
-      ]);
-  
-    addTable(
-      '3. INVENTOR DETAILS:',
-      [[
-        'Personal Info (Name, ID, Nationality)',
-        'Employer',
-        '% Inventorship',
-        'Contact Info (Home, Phone, Email)',
-        'Signature'
-      ]],
-      inventorBody
-    );
-  
-    // Other Sections
+      ]) || [];
+
+    if (inventorBody.length) {
+      addTable(
+        '3. INVENTOR DETAILS:',
+        [[
+          'Personal Info (Name, ID, Nationality)',
+          'Employer',
+          '% Inventorship',
+          'Contact Info (Home, Phone, Email)',
+          'Signature'
+        ]],
+        inventorBody
+      );
+    }
+
     addMultiline('4. ABSTRACT OF THE INVENTION:', idfData.abstract);
-    addMultiline('5. DESCRIPTION:', idfData.invention.description);
-    addMultiline('KEYWORDS:', Array.isArray(idfData.invention.keywords) ? idfData.invention.keywords.join(', ') : '');
-    addMultiline('BACKGROUND:', idfData.invention.background);
-    addMultiline('PROBLEM:', idfData.invention.problem);
-  
-    const componentsList = Array.isArray(idfData.invention.components)
+    addMultiline('5. DESCRIPTION:', idfData.invention?.description);
+    addMultiline('KEYWORDS:', Array.isArray(idfData.invention?.keywords) ? idfData.invention.keywords.join(', ') : '');
+    addMultiline('BACKGROUND:', idfData.invention?.background);
+    addMultiline('PROBLEM:', idfData.invention?.problem);
+
+    const componentsList = Array.isArray(idfData.invention?.components)
       ? idfData.invention.components
-      : (idfData.invention.components || '').split('\n').map(line => line.trim()).filter(Boolean);
-  
+      : (idfData.invention?.components || '').split('\n').map((line: string) => line.trim()).filter(Boolean);
+
     addMultiline('COMPONENTS:', componentsList.join('\n'));
-    addMultiline('ADVANTAGES:', idfData.invention.advantages);
-    addMultiline('ADDITIONAL DATA:', idfData.invention.additionaldata);
-    addMultiline('RESULTS:', Array.isArray(idfData.invention.results) ? idfData.invention.results.join('\n') : '');
-  
+    addMultiline('ADVANTAGES:', idfData.invention?.advantages);
+    addMultiline('ADDITIONAL DATA:', idfData.invention?.additionaldata);
+    addMultiline('RESULTS:', Array.isArray(idfData.invention?.results) ? idfData.invention.results.join('\n') : '');
+
     // Prior Art Table
-    const priorArtBody = idfData.prior_art.filter(p => p.title || p.authors || p.published || p.PublicationDate)
-      .map(p => [p.title, p.authors, p.published, p.PublicationDate]);
-  
+    const priorArtBody = idfData.prior_art?.filter(p => p.title || p.authors || p.published || p.PublicationDate)
+      .map(p => [p.title, p.authors, p.published, p.PublicationDate]) || [];
+
     if (priorArtBody.length) {
       addTable('6. PRIOR ART:', [['Title', 'Authors', 'Published', 'Publication Date']], priorArtBody);
     }
-  
+
     // Disclosure Table
-    const disclosureBody = idfData.disclosure.filter(d => d.title || d.authors || d.published || d.Date)
-      .map(d => [d.title, d.authors, d.published, d.Date]);
-  
+    const disclosureBody = idfData.disclosure?.filter(d => d.title || d.authors || d.published || d.Date)
+      .map(d => [d.title, d.authors, d.published, d.Date]) || [];
+
     if (disclosureBody.length) {
       addTable('7. DISCLOSURE:', [['Title', 'Authors', 'Published', 'Date']], disclosureBody);
     }
-  
+
     // Plans Table
-    const plansBody = idfData.plans.filter(p => p.title || p.authors || p.disclosed || p.Date)
-      .map(p => [p.title, p.authors, p.disclosed, p.Date]);
-  
+    const plansBody = idfData.plans?.filter(p => p.title || p.authors || p.disclosed || p.Date)
+      .map(p => [p.title, p.authors, p.disclosed, p.Date]) || [];
+
     if (plansBody.length) {
       addTable('8. PUBLICATION PLANS:', [['Title', 'Authors', 'Disclosed', 'Date']], plansBody);
     }
-  
+
     // Footer
     const lastPage = doc.getNumberOfPages();
     doc.setPage(lastPage);
@@ -450,11 +442,11 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
     doc.setTextColor(100);
     writeText("PLEASE FEEL FREE TO CONTACT US FOR QUESTIONS:", margin, pageHeight - 15);
     writeText("amitgill@gmail.com", margin, pageHeight - 8);
-  
+
     // Save
     doc.save(`${idfData.title || 'IDF'}.pdf`);
   };
-  
+
   function changeToFallbackStyles(elem: HTMLElement): Record<string, { color: string; backgroundColor: string }> {
     const originalStyles: Record<string, { color: string; backgroundColor: string }> = {};
 
