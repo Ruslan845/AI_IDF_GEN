@@ -5,7 +5,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import generateIDFData from './generateIDFDate';
 import generateusingperplexity from './generateusingPerplexity'
-import '../fonts/Alef-Regular-normal'
+import { fontBase64 } from '@/fonts/Alef-Regular-normal'; // 👈 import base64 font
+
 // const fontBase64 = "BASE64_ENCODED_STRING_OF_ALEF_REGULAR_TTF"; 
 
 interface LeftPartProps {
@@ -275,8 +276,9 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
 
     // ✅ Embed the font only when downloading
     // doc.addFileToVFS('Alef-Regular.ttf', fontBase64);
-    doc.setFont('Alef', 'normal')
-
+    doc.addFileToVFS('Alef-Regular.ttf', fontBase64);
+    doc.addFont('Alef-Regular.ttf', 'Alef', 'normal');
+    doc.setFont('Alef', 'normal');
     // Helper to detect Hebrew
     const isHebrew = (text: string) => /[\u0590-\u05FF]/.test(text);
 
