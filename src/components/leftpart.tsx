@@ -275,7 +275,6 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
 
     // ✅ Embed the font only when downloading
     // doc.addFileToVFS('Alef-Regular.ttf', fontBase64);
-    doc.addFont('Alef-Regular.ttf', 'Alef', 'normal');
     doc.setFont('Alef', 'normal')
 
     // Helper to detect Hebrew
