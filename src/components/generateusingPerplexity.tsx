@@ -36,8 +36,8 @@ const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 
 export default async function generateusingperplexity(title: string, type: string, basic: string) {
     console.log(title, type, basic);
-  const prompt = "This is " + type + " about '" + title + " and base data: '" + basic + "' and response must follow this '" + getValueFromObject(text, type) + "' and give me without markdown and give me only answer without any unnessary sentenses like if you response array, you don't have to add some sentenses if it is about prior_art, disclosure, plans, you only response array and all array has objects and they objects have to be styled like '...':'...' and if it isn't give me also text that show directly and not include [..], charactors like [1]...";
-    console.log("prompt", prompt)
+  const prompt = "This is " + type + " about '" + title + " and base data: '" + basic + "' and response must follow this '" + getValueFromObject(text, type) + "' and give me without markdown and give me only answer without any unnessary sentenses like if you response array, you don't have to add some sentenses if it is about prior_art, disclosure, plans, you only response array and all array has objects and they objects have to be styled like '...':'...' and if it isn't give me also text that show directly and not include [..], charactors like [1]... give me different data from base data with style as different from basic data";
+    console.log("prompt", prompt) 
 
   try {
     const response = await axios.post(PERPLEXITY_API_URL, 
