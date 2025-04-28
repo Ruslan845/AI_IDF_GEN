@@ -35,10 +35,8 @@ const PERPLEXITY_API_KEY = process.env.REACT_APP_PERPLEXITY_API_KEY;
 const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 
 export default async function generateusingperplexity(title: string, type: string, basic: string, urls: any = null) {
-    console.log(title, type, basic, urls);
     const url = urls ? "Get data from " + JSON.stringify(urls): "";
   const prompt = "This is " + type + " about '" + title + " and base data: '" + basic + "' and response must follow this '" + getValueFromObject(text, type) + "' and give me without markdown and give me only answer without any unnessary sentenses like if you response array, you don't have to add some sentenses if it is about prior_art, disclosure, plans, you only response array and all array has objects and they objects have to be styled like '...':'...' and if it isn't give me also text that show directly and not include [..], charactors like [1]... give me different data from base data with style as different from basic data but response must a single string(if it isn't prior art, disclosure and plans) or JSON that only answer. " + url;
-    console.log("prompt", prompt) 
 
   try {
     const response = await axios.post(PERPLEXITY_API_URL, 
@@ -58,8 +56,6 @@ export default async function generateusingperplexity(title: string, type: strin
         },
       }
     );
-    // console.log("json: ", JSON.parse(response.data.content[0].text))
-    console.log("response.data.choices[0].message.content", response.data.choices[0].message.content)
     const result = response.data.choices[0].message.content;
 
     let index = 0;
@@ -68,11 +64,9 @@ export default async function generateusingperplexity(title: string, type: strin
     if(type == "prior_art" || type == "disclosure" || type == "plans"){
     for (let j = 0; j < result.length; j++) {
         if (result[j] === '['){
-            console.log(count)
             count++;
         }
         else if(result[j] === ']'){
-            console.log(count)
             count--;
         }
         if (count == 0){
@@ -80,13 +74,10 @@ export default async function generateusingperplexity(title: string, type: strin
             break;
         }
     }
-    console.log(index, result[index]);
     const real_result = (index != 0 ? result.slice(0, index + 1) : result);
  
-    console.log("real_result: ",real_result)
     const fixed = real_result.replace(/'/g, '"');
     const parsed = JSON.parse(fixed);
-    console.log("fixed: ", fixed)
     // return response.data.choices[0].message.content;
     return fixed;}
     else return result;

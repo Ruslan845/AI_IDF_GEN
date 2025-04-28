@@ -147,7 +147,6 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
         // {
         //   setMessage({title, item, current, result:""})
         // }
-        console.log(updated);
         if (inventionKeys.includes(item as keyof Invention)) {
           const key = item as keyof Invention;
           setIdfData((prev) => ({
@@ -161,7 +160,6 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
           }));
         } else if (topLevelKeys.includes(item as keyof IDFData)) {
           const key = item as keyof IDFData;
-          console.log('prior_art: ', key, updated)
           setIdfData((prev) => ({
             ...prev,
             [key]: ['prior_art', 'disclosure', 'plans'].includes(key)
@@ -185,7 +183,6 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
       if(idfData.invention.additionaldata)
         data.invention.additionaldata = idfData.invention.additionaldata;
       setIdfData(data);
-      console.log("idfData: ", idfData)
     } catch (err) {
       alert('Error fetching data from Claude API.');
     }
@@ -248,7 +245,6 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
           }));
         } else if (topLevelKeys.includes(item as keyof IDFData)) {
           const key = item as keyof IDFData;
-          console.log('prior_art: ', key, updated)
           setIdfData((prev) => ({
             ...prev,
             [key]: ['prior_art', 'disclosure', 'plans'].includes(key)

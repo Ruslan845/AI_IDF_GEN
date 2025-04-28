@@ -18,6 +18,7 @@ export default async function generateIDFData(title: any) {
           problem (Describe in detail the need identified by you for which the invention is a solution) (up to 1 paragraph),
           components (Give me them as one string and splite by '\\n') (Describe in detail the elements of the invention that are crucial for its function. The elements could be parts of a device, a molecular formulation, physical characteristics, computational elements, working conditions, structural features such as size, shape, material etc. Make sure to include all the elements.) (up to 1 page),
           advantages (Based on your knowledge and expertise, describe in detail what is new (not previously known) in the solution proposed, why it is important, and what are the benefits compared to existing solutions) (up to 5 paragraphs)
+          additionaldata (Provide figures, sketches, pictures, graphs, statistics, lists, sequences etc.) (up to 5 pages)
           results (array) (Where applicable, provide results such as in vitro, in vivo, prototype, simulation, working computer program, statistics, etc.)  (1~3 pages)
         }, 
         prior_art (array) {title, authors, published(journal/conference/thesis/web), PublicationDate}( Are there publications by you (the inventors) or by others working in the field, with a solution to a similar problem? , Have you conducted a patent search related to the Invention? The following links may be used for conducting a patent search:        http://www.uspto.gov/     https://patents.google.com/ https://worldwide.espacenet.com/ , For other publications, you may search in any search engine (e.g. Google), or in PubMed, for scientific publications. Please note that the inventor has a strict duty to disclose all technology, including scientific and patent publications, or apparatus and processes sold or used in public, that might be relevant to the patentability of the invention. , In addition, please provide publications that help understand the current knowledge in the field of the invention.),
@@ -51,10 +52,6 @@ export default async function generateIDFData(title: any) {
         },
       }
     );
-    console.log("response: ", response)
-    console.log("response.data: ", response.data);
-    console.log("response.data.content: ", response.data.content[0]);
-    console.log("json: ", JSON.parse(response.data.content[0].text))
 
     return JSON.parse(response.data.content?.[0]?.text);
   } catch (err : any) {

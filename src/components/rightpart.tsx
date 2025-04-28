@@ -47,7 +47,6 @@ export default function RightPart({ message, setMessage }: RightPartProps) {
   };
 
   useEffect(() => {
-    console.log("message: ", message);
     setKeywords(message.current.join(", "));
   }, [message]);
 
@@ -126,11 +125,8 @@ export default function RightPart({ message, setMessage }: RightPartProps) {
   const handleGetArts = async () => {
     const allValid = urls.every((url) => url === "" || isValidUrl(url));
     if (!allValid) {
-      console.log("Some URLs are invalid.");
       return;
     }
-    console.log("Fetching arts with URLs:", urls);
-    console.log("Keywords:", keywords);
     await getData();
     // Your fetch or generation logic here
   };
