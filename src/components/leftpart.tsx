@@ -180,6 +180,8 @@ export default function Leftpart({message, setMessage} : LeftPartProps) {
     setLoading(true);
     try {
       let data: IDFData = await generateIDFData(title);
+      console.log("data: ",data)
+      console.log("idfData: ",idfData)
       if(idfData.invention.additionaldata)
         data.invention.additionaldata = idfData.invention.additionaldata;
       setIdfData(data);
